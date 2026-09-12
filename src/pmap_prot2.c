@@ -88,7 +88,8 @@ xdr_pmaplist(XDR *xdrs, struct pmaplist **rp)
 	 */
 	bool_t more_elements;
 	int freeing;
-	struct pmaplist **next	= NULL; /* pacify gcc */
+	struct pmaplist *next = NULL;
+	struct pmaplist *next_copy;
 
 	assert(xdrs != NULL);
 	assert(rp != NULL);
@@ -107,11 +108,16 @@ xdr_pmaplist(XDR *xdrs, struct pmaplist **rp)
 		 * before we free the current object ...
 		 */
 		if (freeing)
-			next = &((*rp)->pml_next); 
+			next = (*rp)->pml_next;
 		if (! xdr_reference(xdrs, (caddr_t *)rp,
 		    (u_int)sizeof(struct pmaplist), (xdrproc_t)xdr_pmap))
 			return (FALSE);
-		rp = (freeing) ? next : &((*rp)->pml_next);
+		if (freeing) {
+			next_copy = next;
+			rp = &next_copy;
+		} else {
+			rp = &((*rp)->pml_next);
+		}
 	}
 }
 
