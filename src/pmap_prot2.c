@@ -39,6 +39,8 @@
 #include <rpc/xdr.h>
 #include <rpc/pmap_prot.h>
 
+/* Cap decoded list length to prevent memory exhaustion from malicious data */
+#define PMAPLIST_DECODE_MAX_NODES 1024
 
 /*
  * What is going on with linked lists? (!)
@@ -87,7 +89,7 @@ xdr_pmaplist(XDR *xdrs, struct pmaplist **rp)
 	 * xdr_bool when the direction is XDR_DECODE.
 	 */
 	bool_t more_elements;
-	int freeing;
+	int freeing, node_count = 0;
 	struct pmaplist *next = NULL;
 	struct pmaplist *next_copy;
 
@@ -102,6 +104,11 @@ xdr_pmaplist(XDR *xdrs, struct pmaplist **rp)
 			return (FALSE);
 		if (! more_elements)
 			return (TRUE);  /* we are done */
+		if (xdrs->x_op == XDR_DECODE &&
+			++node_count > PMAPLIST_DECODE_MAX_NODES) {
+			return (FALSE);
+		}
+
 		/*
 		 * the unfortunate side effect of non-recursion is that in
 		 * the case of freeing we must remember the next object
